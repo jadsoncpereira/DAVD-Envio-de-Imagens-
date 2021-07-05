@@ -1,0 +1,454 @@
+node n1 {
+    type router
+    model router
+    network-config {
+	hostname STI
+	!
+	interface eth0
+	 ip address 192.0.2.1/24
+	 ipv6 address 2001:db8:0::1/64
+	!
+	interface eth1
+	 ip address 192.0.3.1/24
+	 ipv6 address 2001:db8:1::1/64
+	!
+    }
+    canvas c1
+    iconcoords {282.0 225.0}
+    labelcoords {282.0 257.0}
+    interface-peer {eth1 n2}
+    interface-peer {eth0 n3}
+}
+
+node n2 {
+    type lanswitch
+    network-config {
+	hostname lab
+	!
+    }
+    canvas c1
+    iconcoords {510.0 341.0}
+    labelcoords {510.0 365.0}
+    interface-peer {e0 n1}
+    interface-peer {e1 n4}
+    interface-peer {e2 n5}
+}
+
+node n3 {
+    type router
+    model host
+    network-config {
+	hostname DAVD
+	!
+	interface eth0
+	 ip address 192.0.2.10/24
+	 ipv6 address 2001:db8:0::10/64
+	!
+    }
+    canvas c1
+    iconcoords {104.0 114.0}
+    labelcoords {104.0 146.0}
+    interface-peer {eth0 n1}
+    custom-config {
+	custom-config-id service:UserDefined
+	custom-command UserDefined
+	config {
+	files=('Server.py', 'TCPServidorImagens.py', )
+	cmdup=('python TCPServidorImagens.py', )
+	meta=Servidor (Receber Imagens).
+	}
+    }
+    custom-config {
+	custom-config-id service:UserDefined:TCPServidorImagens.py
+	custom-command TCPServidorImagens.py
+	config {
+	import socket
+	import os
+	import time
+	
+	TAM_PCKG = 1024
+	CAMINHO  = '/home/ipv6br/imagens_turma3/'
+	PORTA    = 50000
+	HOST     = "192.0.2.10"
+	
+	s = socket.socket()
+	s.bind((HOST, PORTA))
+	s.listen(5)
+	
+	print 'Servidor pronto.'
+	
+	while True:
+	    conn, addr = s.accept()
+	    print 'Conectado em ', addr
+	
+	    arquivo = conn.recv(TAM_PCKG)
+	
+	    if len(arquivo) == 0:
+	      arquivo = 'semnome.png'
+	
+	    print "> ", arquivo
+	
+	    dados = conn.recv(TAM_PCKG)
+	    with open(CAMINHO + arquivo, 'wb') as f:
+	        print 'Imagem aberta.'
+	        while len(dados) > 0:
+	            print 'Recebendo dados...'
+	            f.write(dados)
+	            dados = conn.recv(TAM_PCKG)
+	    f.close()
+	    conn.close()
+	
+	}
+    }
+    custom-config {
+	custom-config-id service:UserDefined:Server.py
+	custom-command Server.py
+	config {
+	import socket
+	
+	TAM_PCKG = 1024
+	CAMINHO  = '/home/ipv6br/imagens_turma3/'
+	PORTA    = 50000
+	HOST     = "192.0.2.10"
+	
+	s = socket.socket()
+	s.bind((HOST, PORTA))
+	s.listen(5)
+	
+	print 'Servidor pronto.'
+	
+	while True:
+	    conn, addr = s.accept()
+	    print 'Conectado em ', addr
+	
+	    arquivo = conn.recv(TAM_PCKG)
+	
+	    if len(arquivo) == 0:
+	      arquivo = 'semnome.png'
+	
+	    print "> ", arquivo
+	
+	    dados = conn.recv(TAM_PCKG)
+	    with open(CAMINHO + arquivo, 'wb') as f:
+	        print 'Imagem aberta.'
+	        while len(dados) > 0:
+	            print 'Recebendo dados...'
+	            f.write(dados)
+	            dados = conn.recv(TAM_PCKG)
+	    f.close()
+	    conn.close()
+	
+	}
+    }
+    services {DefaultRoute SSH UserDefined}
+}
+
+node n4 {
+    type router
+    model PC
+    network-config {
+	hostname Bob
+	!
+	interface eth0
+	 ip address 192.0.3.20/24
+	 ipv6 address 2001:db8:1::20/64
+	!
+    }
+    canvas c1
+    iconcoords {602.0 505.0}
+    labelcoords {602.0 537.0}
+    interface-peer {eth0 n2}
+    custom-config {
+	custom-config-id service:UserDefined
+	custom-command UserDefined
+	config {
+	files=('Client.py', 'TCPClienteEnviarImagens.py', )
+	meta=Cliente (Enviar Imagens).
+	}
+    }
+    custom-config {
+	custom-config-id service:UserDefined:TCPClienteEnviarImagens.py
+	custom-command TCPClienteEnviarImagens.py
+	config {
+	import socket
+	import sys
+	import time
+	
+	TAM_PCKG = 1024
+	
+	MSG_AJUDA  = "\nComandos disponiveis:\n"
+	MSG_AJUDA += "\tpython Client.py enviar <nome da turma> <caminho da imagem>\n"
+	MSG_AJUDA += "\tpython Client.py baixar <nome da turma> <nome da imagem>\n"
+	MSG_AJUDA += "\tpython Client.py ajuda\n"
+	
+	s = socket.socket()
+	servidor = "192.0.2.10"
+	porta = 50000
+	
+	s.connect((servidor, porta))
+	
+	arquivo ='/home/ipv6br/logo-ipv6.png'
+	
+	if len(sys.argv) == 3:
+	  comando = sys.argv[1]
+	  caminho = sys.argv[2]
+	  arquivo = caminho.split('/')[-1]
+	  
+	  if comando == 'enviar':
+	    print "Enviando arquivo: ", arquivo    
+	 
+	    s.send(arquivo.split('/')[-1])
+	
+	    f = open(caminho,'rb')
+	    l = f.read(TAM_PCKG)
+	    while (l):
+	      s.send(l)
+	      print 'Enviando...'
+	      l = f.read(TAM_PCKG)
+	    f.close()
+	  else:
+	    print(MSG_AJUDA)
+	else:
+	  print(MSG_AJUDA)
+	
+	s.close()
+	print "Conexao fechada."
+	
+	}
+    }
+    custom-config {
+	custom-config-id service:UserDefined:Client.py
+	custom-command Client.py
+	config {
+	import socket
+	import sys
+	
+	TAM_PCKG = 1024
+	
+	MSG_AJUDA  = "\nComandos disponiveis:\n"
+	MSG_AJUDA += "\tpython TCPClienteEnviarImagens.py enviar <caminho da imagem>\n"
+	MSG_AJUDA += "\tpython TCPClienteEnviarImagens.py ajuda\n"
+	
+	s = socket.socket()
+	servidor = "192.0.2.10"
+	porta = 50000
+	
+	s.connect((servidor, porta))
+	
+	if len(sys.argv) == 3:
+	  comando = sys.argv[1]
+	  caminho = sys.argv[2]
+	  arquivo = caminho.split('/')[-1]
+	  
+	  if comando == 'enviar':
+	    print "Enviando arquivo: ", arquivo    
+	 
+	    s.send(arquivo.split('/')[-1])
+	
+	    f = open(caminho,'rb')
+	    l = f.read(TAM_PCKG)
+	    while (l):
+	      s.send(l)
+	      print 'Enviando...'
+	      l = f.read(TAM_PCKG)
+	    f.close()
+	  else:
+	    print(MSG_AJUDA)
+	else:
+	  print(MSG_AJUDA)
+	
+	s.close()
+	print "Conexao fechada."
+	
+	}
+    }
+    services {DefaultRoute UserDefined}
+}
+
+node n5 {
+    type router
+    model PC
+    network-config {
+	hostname Alice
+	!
+	interface eth0
+	 ip address 192.0.3.21/24
+	 ipv6 address 2001:db8:1::21/64
+	!
+    }
+    canvas c1
+    iconcoords {428.0 473.0}
+    labelcoords {428.0 505.0}
+    interface-peer {eth0 n2}
+    custom-config {
+	custom-config-id service:UserDefined
+	custom-command UserDefined
+	config {
+	files=('Cliente.py', 'TCPClienteEnviarImagens.py', )
+	meta=Cliente (Enviar Imagens).
+	}
+    }
+    custom-config {
+	custom-config-id service:UserDefined:TCPClienteEnviarImagens.py
+	custom-command TCPClienteEnviarImagens.py
+	config {
+	import socket
+	import sys
+	import time
+	
+	TAM_PCKG = 1024
+	
+	MSG_AJUDA  = "\nComandos disponiveis:\n"
+	MSG_AJUDA += "\tpython TCPClienteEnviarImagens.py enviar <caminho da imagem>\n"
+	MSG_AJUDA += "\tpython TCPClienteEnviarImagens.py ajuda\n"
+	
+	s = socket.socket()
+	servidor = "192.0.2.10"
+	porta = 50000
+	
+	s.connect((servidor, porta))
+	
+	if len(sys.argv) == 3:
+	  comando = sys.argv[1]
+	  caminho = sys.argv[2]
+	  arquivo = caminho.split('/')[-1]
+	  
+	  if comando == 'enviar':
+	    print "Enviando arquivo: ", arquivo    
+	 
+	    s.send(arquivo.split('/')[-1])
+	
+	    f = open(caminho,'rb')
+	    l = f.read(TAM_PCKG)
+	    while (l):
+	      s.send(l)
+	      print 'Enviando...'
+	      l = f.read(TAM_PCKG)
+	    f.close()
+	  else:
+	    print(MSG_AJUDA)
+	else:
+	  print(MSG_AJUDA)
+	
+	s.close()
+	print "Conexao fechada."
+	
+	}
+    }
+    custom-config {
+	custom-config-id service:UserDefined:Cliente.py
+	custom-command Cliente.py
+	config {
+	import socket
+	import sys
+	
+	TAM_PCKG = 1024
+	
+	MSG_AJUDA  = "\nComandos disponiveis:\n"
+	MSG_AJUDA += "\tpython TCPClienteEnviarImagens.py enviar <caminho da imagem>\n"
+	MSG_AJUDA += "\tpython TCPClienteEnviarImagens.py ajuda\n"
+	
+	s = socket.socket()
+	servidor = "192.0.2.10"
+	porta = 50000
+	
+	s.connect((servidor, porta))
+	
+	if len(sys.argv) == 3:
+	  comando = sys.argv[1]
+	  caminho = sys.argv[2]
+	  arquivo = caminho.split('/')[-1]
+	  
+	  if comando == 'enviar':
+	    print "Enviando arquivo: ", arquivo    
+	 
+	    s.send(arquivo.split('/')[-1])
+	
+	    f = open(caminho,'rb')
+	    l = f.read(TAM_PCKG)
+	    while (l):
+	      s.send(l)
+	      print 'Enviando...'
+	      l = f.read(TAM_PCKG)
+	    f.close()
+	  else:
+	    print(MSG_AJUDA)
+	else:
+	  print(MSG_AJUDA)
+	
+	s.close()
+	print "Conexao fechada."
+	
+	}
+    }
+    services {DefaultRoute UserDefined}
+}
+
+link l2 {
+    nodes {n1 n2}
+    bandwidth 0
+}
+
+link l1 {
+    nodes {n3 n1}
+    bandwidth 0
+}
+
+link l3 {
+    nodes {n2 n4}
+    bandwidth 0
+}
+
+link l4 {
+    nodes {n2 n5}
+    bandwidth 0
+}
+
+annotation a1 {
+    iconcoords {14 15 302 249}
+    type rectangle
+    label {DMZ}
+    labelcolor black
+    fontfamily {Arial}
+    fontsize {12}
+    color #96bcff
+    width 0
+    border black
+    rad 25
+    canvas c1
+}
+
+annotation a2 {
+    iconcoords {360 241 662 548}
+    type rectangle
+    label {Intranet}
+    labelcolor black
+    fontfamily {Arial}
+    fontsize {12}
+    color #c0cea3
+    width 0
+    border black
+    rad 25
+    canvas c1
+}
+
+canvas c1 {
+    name {Canvas1}
+}
+
+option global {
+    interface_names no
+    ip_addresses yes
+    ipv6_addresses yes
+    node_labels yes
+    link_labels yes
+    show_api no
+    background_images no
+    annotations yes
+    grid yes
+    traffic_start 0
+}
+
+option session {
+}
+
